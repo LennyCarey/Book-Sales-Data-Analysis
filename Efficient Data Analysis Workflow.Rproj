@@ -1,13 +1,82 @@
-Version: 1.0
+library('tidyverse')
+reviews <- read_csv("sales2019.csv")
 
-RestoreWorkspace: Default
-SaveWorkspace: Default
-AlwaysSaveHistory: Default
+# Understanding the Data
 
-EnableCodeIndexing: Yes
-UseSpacesForTab: Yes
-NumSpacesForTab: 2
-Encoding: UTF-8
+# How big is the dataset?
+dim(reviews)
 
-RnwWeave: Sweave
-LaTeX: pdfLaTeX
+# What are the column names?
+colnames(reviews)
+
+# What are the column types?
+for (i in colnames(reviews)) {
+  print(typeof(reviews[[i]]))
+}
+
+# What are the unique values in each column?
+for (i in colnames(reviews)) {
+  print("Unique values in the column:")
+  print(i)
+  print(unique(reviews[[i]]))
+  print("")
+}
+
+# From observing the we can see that some of the users have not submitted 
+# reviews.
+
+# Handling Missing Data
+
+# Removing the rows without a user submitted review
+complete_reviews = reviews %>%
+  filter(!is.na(user_submitted_review))
+
+dim(complete_reviews)
+
+# Transforming the Review Data
+complete_reviews <- complete_reviews %>%
+  mutate(
+    review_num = case_when(
+      user_submitted_review == "Hated it" ~ 1,
+      user_submitted_review == "Would not recommend" ~ 2,
+      user_submitted_review == "A lot of material was not needed" ~ 2,
+      user_submitted_review == "The author's other books were better" ~ 3,
+      user_submitted_review == "it was okay" ~ 3,
+      user_submitted_review == "OK" ~ 3,
+      user_submitted_review == "I learned a lot" ~ 4,
+      user_submitted_review == "Awesome!" ~ 5,
+      user_submitted_review == "Never read a better book" ~ 5
+    ),
+    high_review = if_else(review_num >=4, TRUE, FALSE)
+  )
+
+# Analyzing The Data
+
+# Determining the most purchased book
+complete_reviews %>%
+  group_by(title)%>%
+  summarize(total_purchased = n()) %>%
+  arrange(-total_purchased)
+
+# Assigning the books a star rating out of 5
+star_rating <- complete_reviews %>%
+  group_by(title) %>%
+  summarize(Stars = mean(review_num,na.rm = TRUE)) %>%
+  arrange(-Stars)
+print(star_rating)
+
+# Determining how many high ratings each book had
+High_reviews <- complete_reviews %>%
+  filter(high_review) %>%
+  group_by(title) %>%
+  summarize(High_Ratings = n()) %>%
+  arrange(-High_Ratings)
+print(High_reviews)
+
+# Combining the data to make it look cleaner.
+star_rating <- star_rating %>%
+  left_join(High_reviews, by = "title") %>%
+  mutate(High_Ratings = ifelse(is.na(High_Ratings), 0, High_Ratings))
+print(star_rating)
+
+
